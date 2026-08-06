@@ -1,5 +1,5 @@
-# Logistic Regression for Pharmacy Analytics — Python dependencies
-# Install with:  pip install -r requirements.txt
+#### Logistic Regression for Pharmacy Analytics — Python dependencies
+##### Install with:  pip install -r requirements.txt
 
 scikit-learn>=1.3     # LogisticRegression, train/test split, scaling, metrics <br>
 pandas>=2.0           # data handling <br>

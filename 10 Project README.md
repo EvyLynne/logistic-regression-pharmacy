@@ -7,7 +7,8 @@
 - **Part 1** builds the model with a graph at every step: why a straight line fails for yes/no outcomes, the sigmoid, leakage-safe feature engineering, and evaluation (confusion matrix, probability separation, ROC curve).
 - **Part 2** interprets the model: odds, **log(odds)** as the scale where logistic regression is linear, coefficients as **log(odds ratios)**, and odds ratios — with a worked end-to-end example.
 - **Part 3** covers statistical inference: transforming the y-axis to log(odds) so the S-curve becomes a straight fitted line, **Wald's test** with p-values and confidence intervals (via statsmodels), and how the **t-test** from linear regression relates (and where it still applies in EDA).
-- **Results:** 84.8% accuracy vs. a 74.9% do-nothing baseline; ROC AUC 0.879. Top driver discovered by the model: brand-drug share (odds ratio ≈ 5.1× per +1 SD, Wald z = 11.8, 95% CI [3.97×, 6.88×]).
+- **Appendix** profiles the high-cost group: which specialties land in the top 25%, how their prescribing differs, and why "expensive drugs" and "expensive practices" are two different questions (only 48% overlap).
+- **Results:** 85.1% accuracy vs. a 74.9% do-nothing baseline; ROC AUC 0.883. Top driver discovered by the model: brand-drug share (odds ratio ≈ 4.8× per +1 SD, Wald z = 11.2, 95% CI [3.76×, 6.57×]).
 
 ## The big idea (one paragraph)
 
@@ -41,11 +42,13 @@ Everything after the download is **size-agnostic** — identical code trains on 
 - `10 README.md` — this file: start here for orientation.
 - `20 Logistic Regression Tutorial.docx` — the concept tutorial with all graphs embedded: linear→logistic bridge, sigmoid, case study results, log(odds), odds ratios, and Wald's test.
 - `30 logistic_regression_pharmacy.py` — runnable script; prints all results and saves every graph to `./charts/`.
-- `40 logistic_regression_pharmacy.ipynb` — the full interactive tutorial (Parts 1–3, 10 graphs, outputs included).
+- `40 logistic_regression_pharmacy.ipynb` — the full interactive tutorial (Parts 1–3 plus the profiling appendix, 10 graphs, outputs included).
 - `50 Fabric Setup Guide.docx` / `.md` — zero-to-running instructions for Microsoft Fabric (same guide, two formats).
 - `60 logistic_regression_pharmacy_fabric.ipynb` — Fabric-ready notebook with the same graphs, plus Lakehouse export cells.
 - `70 GitHub Setup Guide.docx` / `.md` — publish this project as a GitHub portfolio repo.
 - `80 GitHub README.md` — ready-made repo homepage: paste its contents into the repo's `README.md` when publishing.
+- `90 CMS Documentation References.xlsx` — every CMS methodology, data dictionary, dataset and supporting URL in one filterable table (type / name / URL).
+- `requirements.txt` — the Python dependencies; unnumbered because pip requires this exact filename. Use it locally (`pip install -r requirements.txt`) and upload it unchanged when publishing to GitHub.
 
 There is no data file in this folder by design — the data arrives over the internet at run time.
 
@@ -73,6 +76,7 @@ The script needs an internet connection and saves every graph to `./charts/`. Or
 
 - **Data leakage:** drug cost defines the label, so it must not be a feature; scalers are fit on training data only.
 - **Separation:** a category that perfectly predicts the outcome sends its coefficient to infinity and breaks the Wald standard errors — the code detects and merges those groups, and Part 3 shows what the broken output looks like.
+- **Blanks are not zeros:** CMS suppresses counts of 1–10 for privacy and writes true zeros as `0`. Its methodology warns that treating blanks as zeros underestimates the truth, so this project imputes **5**, the midpoint of the hidden range, per CMS's own suggestion.
 - **Class imbalance:** accuracy alone misleads; compare to the baseline.
 - **The 0.5 threshold is a choice:** tune it to your error costs.
 - **Odds ratios are associations, not causes** — and p-values inherit every sampling caveat.

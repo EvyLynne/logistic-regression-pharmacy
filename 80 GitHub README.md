@@ -42,12 +42,14 @@ The model predicts whether a prescriber lands in the **top 25% of drug cost per 
 
 ## Repository structure
 
+
 ```
 logistic-regression-pharmacy/
 ├── README.md
 ├── LICENSE
 ├── .gitignore
 ├── requirements.txt
+├── requirements.md
 ├── src/
 │   └── logistic_regression_pharmacy.py            ← runnable script; saves all charts to ./charts/
 ├── notebooks/

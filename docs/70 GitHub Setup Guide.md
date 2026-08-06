@@ -41,7 +41,7 @@ The path in brief:
 Easiest route; nothing to install.
 
 1. In your new repo, select **Add file** → **Upload files**.
-2. Drag in all the project files (10 through 80) from this folder. There is no data file — the notebooks download from CMS at run time.
+2. Drag in all the project files (10 through 80, plus `requirements.txt`) from this folder. There is no data file — the notebooks download from CMS at run time.
 3. Scroll down, type a commit message (e.g., `Add logistic regression tutorial project`), and select **Commit changes**.
 4. To make the repo homepage show your project: open `80 GitHub README.md` on GitHub, copy its contents into the repo's `README.md` (Edit → paste → Commit changes). GitHub only auto-displays a file named exactly `README.md` — the `80` file is written specifically for this purpose, with badges, results, and repo navigation.
 
@@ -89,7 +89,7 @@ logistic-regression-pharmacy/
 ├── README.md                                      ← contents of "80 GitHub README.md"
 ├── LICENSE                                        ← added at repo creation (MIT)
 ├── .gitignore                                     ← Python template, added at repo creation
-├── requirements.txt                               ← dependencies (see below)
+├── requirements.txt                               ← ships in this folder; upload unchanged
 ├── src/
 │   └── logistic_regression_pharmacy.py            ← from "30 ..."
 ├── notebooks/
@@ -104,18 +104,7 @@ logistic-regression-pharmacy/
 How to apply it:
 
 1. **Drop the numeric prefixes inside the repo.** They exist to order files in a Windows folder; in a repo, the README provides reading order, and prefixes with spaces make awkward URLs (`src/30%20logistic...`).
-2. **Create `requirements.txt`** (Add file → Create new file) with one dependency per line:
-
-   ```
-   scikit-learn
-   pandas
-   requests
-   matplotlib
-   statsmodels
-   scipy
-   ```
-
-   This lets anyone reproduce your environment with `pip install -r requirements.txt`.
+2. **`requirements.txt` is already written for you** — it ships in this folder with that exact filename, so upload it as-is (no renaming; the name is what makes `pip install -r requirements.txt` work). It lists scikit-learn, pandas, numpy, requests, matplotlib, statsmodels, and scipy with minimum versions, so anyone can reproduce your environment in one command.
 3. **Creating folders on the GitHub website:** there's no "new folder" button — when creating or moving a file, type the folder name and a slash in the filename box (e.g., `src/logistic_regression_pharmacy.py`) and GitHub creates the folder. To move an existing file, open it → pencil icon → edit the filename path the same way.
 4. **With Git locally:** just make the folders, `mv` the files in, then `git add . && git commit -m "Organize repo structure" && git push`.
 5. **Update the file list in README.md** so its links point to the new paths, e.g., `[the script](src/logistic_regression_pharmacy.py)`.

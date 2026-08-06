@@ -12,6 +12,10 @@ log(odds) and odds ratios (Part 2), and tested with Wald's test, p-values,
 and confidence intervals -- including the log-odds y-axis transformation
 that turns the S-curve into a straight fitted line (Part 3).
 
+Suppressed values (blank counts of 1-10) are imputed as 5 following CMS's
+published methodology; see the note at STEP 2 and "90 CMS Documentation
+References.xlsx" for the source documents.
+
 Dataset source:
     Medicare Part D Prescribers - by Provider (2024 data year)
     Centers for Medicare & Medicaid Services (CMS), public U.S. Government
@@ -134,16 +138,27 @@ raw = load_partd()
 print(f"        {len(raw):,} providers x {raw.shape[1]} columns")
 
 # ---------------------------------------------------------------
-# STEP 2 -- Clean (suppressed counts -> 0; drop tiny practices)
+# STEP 2 -- Clean (impute suppressed counts; drop tiny practices)
 # ---------------------------------------------------------------
+# A blank count is a SUPPRESSED value, not a zero: CMS hides counts of 1-10 to
+# protect beneficiary privacy (true zeros are written as "0"). Their methodology
+# warns that letting software read blanks as zeros "will result in ... under-
+# estimates of the true values," and suggests imputing a value such as five --
+# the midpoint of the suppressed range. We follow that recommendation.
+#   Methodology, section "Data Redaction and Suppression":
+#   https://data.cms.gov/sites/default/files/2023-05/MUP_DPR_RY23_20230424_Methodology_508.pdf
+SUPPRESSED_IMPUTE = 5
+
 df = raw.copy()
 count_cols = ["Brnd_Tot_Clms", "Gnrc_Tot_Clms", "LIS_Tot_Clms",
               "Opioid_Tot_Clms", "Bene_Dual_Cnt"]
-df[count_cols] = df[count_cols].fillna(0)
+n_suppressed = int(df[count_cols].isna().sum().sum())
+df[count_cols] = df[count_cols].fillna(SUPPRESSED_IMPUTE)
 df = df.dropna(subset=["Tot_Clms", "Tot_Drug_Cst", "Bene_Avg_Age", "Bene_Avg_Risk_Scre"])
 df = df[df["Tot_Clms"] >= MIN_CLAIMS]
 print(f"Step 2: {len(df):,} providers after cleaning "
-      f"({len(raw) - len(df):,} dropped)")
+      f"({len(raw) - len(df):,} dropped); "
+      f"{n_suppressed:,} suppressed counts imputed as {SUPPRESSED_IMPUTE}")
 
 # ---------------------------------------------------------------
 # STEP 3 -- Label + leakage-safe features
@@ -179,6 +194,32 @@ numeric_features = ["brand_share", "lis_share", "opioid_share", "dual_per_100_cl
 X = pd.concat([df[numeric_features],
                pd.get_dummies(df["specialty"], prefix="spec", drop_first=True)], axis=1)
 y = df["high_cost"]
+
+# ---- plain-English names, used by every chart and table from here on ----
+# get_dummies(drop_first=True) leaves one specialty out; it becomes the baseline
+# every other specialty is compared against, so the charts must say which one.
+SPEC_REFERENCE = sorted(df["specialty"].unique())[0]
+FEATURE_LABELS = {
+    "brand_share":        "Brand-drug share of claims",
+    "lis_share":          "Low-income-subsidy share of claims",
+    "opioid_share":       "Opioid share of claims",
+    "dual_per_100_clms":  "Dual-eligible patients per 100 claims",
+    "log10_claims":       "Practice size (log10 of total claims)",
+    "Bene_Avg_Age":       "Patient panel: average age",
+    "Bene_Avg_Risk_Scre": "Patient panel: average risk score",
+}
+
+
+def pretty(name):
+    """Turn a model feature name into something a reader understands."""
+    if name in FEATURE_LABELS:
+        return FEATURE_LABELS[name]
+    if name.startswith("spec_"):
+        return f"Specialty: {name[5:]}"
+    return "Intercept" if name == "const" else name
+
+
+print(f"        specialty comparisons are all relative to: {SPEC_REFERENCE}")
 print(f"Step 3: high-cost threshold ${threshold:.2f}/claim; "
       f"{y.sum()} high-cost vs {(1-y).sum()} typical; {X.shape[1]} features")
 
@@ -303,26 +344,29 @@ save(fig, "05_odds_logodds.png")
 # Step 8 -- coefficients on both scales
 weights = pd.Series(model.coef_[0], index=X.columns).sort_values()
 or_series = np.exp(weights)
+labels = [pretty(n) for n in weights.index]
 colors = ["#C44E52" if w > 0 else "#4878A8" for w in weights]
 print(f"\nStep 8: intercept (log-odds at all-average) = {model.intercept_[0]:+.2f}")
 print("  Top positive log(odds ratios):")
-print(weights.tail(3).iloc[::-1].round(2).to_string())
+print(weights.tail(3).iloc[::-1].rename(pretty).round(2).to_string())
 print("  As odds ratios (e^coef):")
-print(or_series.tail(3).iloc[::-1].round(2).to_string())
+print(or_series.tail(3).iloc[::-1].rename(pretty).round(2).to_string())
 
-fig, axes = plt.subplots(1, 2, figsize=(13, 6.5), sharey=True)
-axes[0].barh(weights.index, weights.values, color=colors)
+fig, axes = plt.subplots(1, 2, figsize=(14, 6.5), sharey=True)
+axes[0].barh(labels, weights.values, color=colors)
 axes[0].axvline(0, color="black", lw=0.8)
 axes[0].set_xlabel("log(odds ratio) = coefficient")
 axes[0].set_title("Additive scale: log(odds ratios)")
-axes[1].scatter(or_series.values, or_series.index, color=colors, s=45, zorder=3)
-for name, v in or_series.items():
-    axes[1].plot([1, v], [name, name], color="gray", lw=1, zorder=2)
+axes[1].scatter(or_series.values, labels, color=colors, s=45, zorder=3)
+for lab, v in zip(labels, or_series.values):
+    axes[1].plot([1, v], [lab, lab], color="gray", lw=1, zorder=2)
 axes[1].axvline(1, color="black", lw=0.8)
 axes[1].set_xscale("log")
 axes[1].set_xticks([0.25, 0.5, 1, 2, 4], ["0.25x", "0.5x", "1x", "2x", "4x"])
 axes[1].set_xlabel("odds ratio per +1 SD (log axis)")
 axes[1].set_title("Multiplicative scale: odds ratios")
+fig.suptitle(f"Specialty rows compare against {SPEC_REFERENCE}; 1x means no effect",
+             y=1.02, fontsize=10, color="#404040")
 save(fig, "06_coefficients_odds_ratios.png")
 
 # Step 9 -- worked example: brand share on the sigmoid
@@ -379,7 +423,7 @@ axes[0].set_title("Probability scale: the S-curve"); axes[0].legend()
 axes[1].scatter(g["x"], g["log_odds"], s=g["n"] * 0.6, color="#4878A8", zorder=3,
                 label="observed log(odds) (bin)")
 axes[1].plot(grid1, b0_1 + b1_1 * grid1, color="#2E7D32", lw=2.5,
-             label=f"z = {b0_1:.2f} + {b1_1:.2f} x brand_share")
+             label=f"fitted line:  z = {b0_1:.2f} + {b1_1:.2f} × (brand share)")
 axes[1].set_xlabel("brand share of claims"); axes[1].set_ylabel("log(odds)")
 axes[1].set_title("Log(odds) scale: a straight line"); axes[1].legend()
 save(fig, "08_logodds_line.png")
@@ -406,14 +450,15 @@ conf = sm_model.conf_int().drop("const")
 pvals = sm_model.pvalues.drop("const")
 order = params.sort_values().index
 sig = pvals < 0.05
-fig, axes = plt.subplots(1, 2, figsize=(13.5, 6.8), sharey=True)
+fig, axes = plt.subplots(1, 2, figsize=(14.5, 6.8), sharey=True)
 for name in order:
+    lab = pretty(name)
     color = "#C44E52" if params[name] > 0 else "#4878A8"
     filled = color if sig[name] else "white"
-    axes[0].plot(conf.loc[name], [name, name], color=color, lw=2)
-    axes[0].scatter(params[name], name, s=55, color=filled, edgecolor=color, zorder=3)
-    axes[1].plot(np.exp(conf.loc[name]), [name, name], color=color, lw=2)
-    axes[1].scatter(np.exp(params[name]), name, s=55, color=filled, edgecolor=color, zorder=3)
+    axes[0].plot(conf.loc[name], [lab, lab], color=color, lw=2)
+    axes[0].scatter(params[name], lab, s=55, color=filled, edgecolor=color, zorder=3)
+    axes[1].plot(np.exp(conf.loc[name]), [lab, lab], color=color, lw=2)
+    axes[1].scatter(np.exp(params[name]), lab, s=55, color=filled, edgecolor=color, zorder=3)
 axes[0].axvline(0, color="black", lw=0.8)
 axes[0].set_xlabel("coefficient (log odds ratio) with 95% CI")
 axes[0].set_title("Wald intervals, log-odds scale (filled = p < 0.05)")
@@ -422,6 +467,8 @@ axes[1].set_xscale("log")
 axes[1].set_xticks([0.25, 0.5, 1, 2, 4], ["0.25x", "0.5x", "1x", "2x", "4x"])
 axes[1].set_xlabel("odds ratio with 95% CI (log axis)")
 axes[1].set_title("Wald intervals, odds-ratio scale")
+fig.suptitle(f"Specialty rows compare against {SPEC_REFERENCE}",
+             y=1.02, fontsize=10, color="#404040")
 save(fig, "09_wald_intervals.png")
 print(f"  {sig.sum()} of {len(sig)} features significant at p < 0.05")
 

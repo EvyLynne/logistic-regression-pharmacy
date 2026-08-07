@@ -59,6 +59,8 @@ logistic-regression-pharmacy/
     ├── Logistic Regression Tutorial.docx          ← concept tutorial with all graphs embedded
     ├── Fabric Setup Guide.md                      ← zero-to-running in Microsoft Fabric
     └── GitHub Setup Guide.md                      ← how this repo was set up
+    └── 15 Data Dictionary.xlsx                    ← information on the data from CMS
+
 ```
 
 ## Quick start (local)
